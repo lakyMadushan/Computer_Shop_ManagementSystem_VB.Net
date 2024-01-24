@@ -1,0 +1,369 @@
+01.meka dbconnection eke code eka bn.module ekak hadnna ona
+
+Imports MySql.Data.MySqlClient
+Module DB_conect
+    Const SERVER As String = "localhost"
+    Public DbConnection As New MySqlConnection
+    Public cammand As New MySqlCommand
+    Public Status As Boolean = False
+
+    Public Function Dbconnect() As Boolean
+        Try
+            DbConnection.ConnectionString = "server=" + SERVER + ";user=root;password=;database=computer_shop;"
+            DbConnection.Open()
+
+            If DbConnection.State = 1 Then
+                Status = True
+            End If
+        Catch ex As Exception
+            ex.Message.ToString()
+
+        End Try
+        Return Status
+
+    End Function
+
+End Module
+=============================================================================
+
+02. meka validation kiyala modul ekk hadnava bn. oke code eka bn oya sell and stock vala validation karann yodaganne
+
+Module ValidationRule
+    Public Function IsEmpty(ByVal input As String) As Boolean
+        input = Trim(input)
+        If String.IsNullOrEmpty(input) Then
+            Return True
+
+        End If
+        Return False
+
+    End Function
+
+    Public Function isDigit(ByVal input As String) As Boolean
+        If Char.IsDigit(input) Then
+            Return True
+
+        End If
+        Return False
+    End Function
+
+    Public Function moreThanZero(ByVal value) As Boolean
+        If isDigit(value) AndAlso value > 0 Then
+            Return True
+
+        End If
+        Return False
+
+    End Function
+
+End Module
+===================================================================================
+
+03. meka bn sell kiyana eke interface ekt anuva code krala thinnne
+
+Imports MySql.Data.MySqlClient
+Public Class Sell
+    Public command As New MySqlCommand
+    Public adapter As New MySqlDataAdapter
+    Public datatable As New DataTable
+
+    Private Sub btnsave_Click(sender As Object, e As EventArgs) Handles btnsave.Click
+
+        '====================================================step1
+
+        Dim Reg_Num, Name, Quantity, Unit_Price, Out_Of_Sell As String
+
+        Reg_Num = txtRegister_Number.Text
+        Name = txtItem_Name.Text
+        Quantity = txtquantity.Text
+        Unit_Price = txtUnitPrice.Text
+        Out_Of_Sell = txtOut_Of_Sell.Text
+
+
+        '====================================================step2
+        'empty data validation
+
+        If IsEmpty(Reg_Num) Or IsEmpty(Name) Or IsEmpty(Quantity) Or IsEmpty(Unit_Price) Or IsEmpty(Out_Of_Sell) Then
+            MsgBox("All fields are Required")
+        ElseIf Not moreThanZero(Quantity) Then
+            MsgBox("Enter valid quantity")
+        ElseIf Not moreThanZero(Unit_Price) Then
+            MsgBox("Enter valid Unit Price")
+        ElseIf Not moreThanZero(Out_Of_Sell) Then
+            MsgBox("Enter valid Out Of Sell")
+
+        Else
+
+            '===============================================step3
+            'connect to the DB
+
+            If Dbconnect() Then
+
+                Dim sql As String
+                Dim result As String
+
+                sql = "INSERT INTO `sell` (`Reg_Num`, `Name`, `Quantity`, `Unit_Price (Ru.)` ,`Out_Of_Sell`, `Created date` ) VALUES (@REG_NUM, @NAME, @QTY, @UP ,@OOS, @CD)"
+
+                command.CommandText = sql
+                command.Connection = DbConnection
+
+                command.Parameters.AddWithValue("@REG_NUM", Reg_Num)
+                command.Parameters.AddWithValue("@NAME", Name)
+                command.Parameters.AddWithValue("@QTY", Quantity)
+                command.Parameters.AddWithValue("@UP", Unit_Price)
+                command.Parameters.Add("@OOS", MySqlDbType.Int32).Value = Out_Of_Sell
+                command.Parameters.AddWithValue("@CD", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))
+
+                'adapter.InsertCommand = command
+                ' result = adapter.InsertCommand.ExecuteNonQuery()
+
+                result = command.ExecuteNonQuery()
+
+                If result = 1 Then
+
+                    MsgBox("New Sell Item Registered", vbOKOnly + vbInformation, "Success")
+
+                    txtRegister_Number.Text = ""
+                    txtItem_Name.Text = ""
+                    txtquantity.Text = ""
+                    txtUnitPrice.Text = ""
+                    txtOut_Of_Sell.Text = ""
+                Else
+                    MsgBox("Error, Retry Again")
+
+                End If
+
+                command.Parameters.Clear()
+
+            End If
+
+            End If
+
+    End Sub
+
+    Private Sub btnShow_Item_Click(sender As Object, e As EventArgs) Handles btnShow_Item.Click
+        Show_Sell_Item.Show()
+    End Sub
+
+    Private Sub btnDelete_Click(sender As Object, e As EventArgs) Handles btnDelete.Click
+
+
+        If Dbconnect() Then
+
+            Dim Reg_Num, sql, result As String
+
+            Reg_Num = txtRegister_Number.Text
+            sql = "DELETE FROM `sell` WHERE `sell`.`Reg_Num` = @Reg"
+
+            command.Connection = DbConnection
+            command.CommandText = sql
+
+            command.Parameters.AddWithValue("@Reg", Reg_Num)
+
+            result = command.ExecuteNonQuery()
+
+            If result = 1 Then
+
+                MsgBox("Item Deleted")
+
+            End If
+
+        End If
+
+    End Sub
+End Class
+==============================================================================
+
+04. meka sell details balagann code eka table ekakin
+
+Imports MySql.Data.MySqlClient
+Public Class Show_Sell_Item
+
+    Public command As New MySqlCommand
+    Public adapter As New MySqlDataAdapter
+    Public datatable As New DataTable
+
+    Private Sub Show_Sell_Item_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+
+        If Dbconnect() Then
+            Dim sql As String
+            sql = "SELECT * FROM `sell`"
+            command.CommandText = sql
+            Command.Connection = DbConnection
+            adapter.SelectCommand = command
+
+            adapter.Fill(DataTable)
+            DataGridViewShowItem.DataSource = datatable
+
+        Else
+            MsgBox("Error occured")
+
+        End If
+
+
+    End Sub
+
+End Class
+
+==============================================================================
+05.meka stock eke code eka 
+
+Imports MySql.Data.MySqlClient
+Public Class Stock
+    Public command As New MySqlCommand
+    Public adapter As New MySqlDataAdapter
+    Public datatable As New DataTable
+
+    Private Sub btnsave_Click(sender As Object, e As EventArgs) Handles btnsave.Click
+
+        '===step1
+
+        Dim Reg_Num, Name, Quantity, Unit_Price, Return_Item As String
+
+        Reg_Num = txtReg_Num.Text
+        Name = txtItem_Name.Text
+        Quantity = txtQuantity.Text
+        Unit_Price = txtUnit_Price.Text
+        Return_Item = txtReturnItem.Text
+
+
+        '===step2
+        'empty data validation
+
+        If IsEmpty(Reg_Num) Or IsEmpty(Name) Or IsEmpty(Quantity) Or IsEmpty(Unit_Price) Or IsEmpty(Return_Item) Then
+            MsgBox("All fields are Required")
+        ElseIf Not moreThanZero(Quantity) Then
+            MsgBox("Enter valid quantity")
+        ElseIf Not moreThanZero(Unit_Price) Then
+            MsgBox("Enter valid Unit Price")
+
+
+        Else
+
+
+
+            '===step3
+            'connect to the DB
+
+            If Dbconnect() Then
+
+                Dim sql As String
+                Dim result As String
+
+                sql = "INSERT INTO `stock` (`Reg_No`, `Item_Name`, `Unit_Price (Ru.)` , `Quantity`, `Return_Item`, `Created_date` ) VALUES (@REG_NUM, @NAME, @UP, @QTY, @RI, @CD)"
+
+                command.CommandText = sql
+                command.Connection = DbConnection
+
+
+
+                command.Parameters.AddWithValue("@REG_NUM", Reg_Num)
+                command.Parameters.AddWithValue("@NAME", Name)
+                command.Parameters.AddWithValue("@UP", Unit_Price)
+                command.Parameters.AddWithValue("@QTY", Quantity)
+                command.Parameters.AddWithValue("@RI", Return_Item)
+                command.Parameters.AddWithValue("@CD", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))
+
+                'adapter.InsertCommand = command
+                ' result = adapter.InsertCommand.ExecuteNonQuery()
+
+                result = command.ExecuteNonQuery()
+
+                If result = 1 Then
+
+                    MsgBox("New Stock Item Registered", vbOKOnly + vbInformation, "Success")
+
+                    txtReg_Num.Text = ""
+                    txtItem_Name.Text = ""
+                    txtUnit_Price.Text = ""
+                    txtQuantity.Text = ""
+                    txtReturnItem.Text = ""
+
+
+                Else
+                    MsgBox("Error, Retry Again")
+
+                End If
+
+                command.Parameters.Clear()
+
+            End If
+
+        End If
+
+
+
+
+    End Sub
+
+    Private Sub btnShowStock_Click(sender As Object, e As EventArgs) Handles btnShowStock.Click
+        Stock_Details.Show()
+    End Sub
+
+    Private Sub btnDelete_Click(sender As Object, e As EventArgs) Handles btnDelete.Click
+
+
+        If Dbconnect() Then
+
+            Dim Reg_Num, sql, result As String
+
+            Reg_Num = txtReg_Num.Text
+            sql = "DELETE FROM `stock` WHERE `stock`.`Reg_No` = @Reg"
+
+            command.Connection = DbConnection
+            command.CommandText = sql
+
+            command.Parameters.AddWithValue("@Reg", Reg_Num)
+
+            result = command.ExecuteNonQuery()
+
+            If result = 1 Then
+
+                MsgBox("Item Deleted")
+
+            End If
+
+
+
+        End If
+
+
+    End Sub
+End Class
+
+==========================================================================
+
+06. meka bn stock data venama penna table ekak, eke code eka. database ekta data enter karpu data penna ganna puluvn
+
+Imports MySql.Data.MySqlClient
+Public Class Stock_Details
+
+    Public command As New MySqlCommand
+    Public adapter As New MySqlDataAdapter
+    Public datatable As New DataTable
+
+    Private Sub Stock_Details_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        If Dbconnect() Then
+            Dim sql As String
+            sql = "SELECT * FROM `stock`"
+            command.CommandText = sql
+            command.Connection = DbConnection
+            adapter.SelectCommand = command
+
+            adapter.Fill(datatable)
+            DataGridViewStockD.DataSource = datatable
+
+        Else
+            MsgBox("Error occured")
+
+        End If
+
+    End Sub
+
+End Class
+
+
+
+
